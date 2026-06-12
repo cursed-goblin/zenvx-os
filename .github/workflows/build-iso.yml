@@ -38,7 +38,8 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             live-build debootstrap squashfs-tools xorriso \
-            isolinux syslinux-common grub-pc-bin grub-efi-amd64-bin mtools \
+            isolinux syslinux syslinux-common syslinux-utils \
+            grub-pc-bin grub-efi-amd64-bin mtools \
             dosfstools ca-certificates curl git debian-archive-keyring procps
           lb --version || true
 
@@ -55,23 +56,34 @@ jobs:
 
       - name: Build the ISO
         working-directory: zenvx-iso
+        shell: bash
         run: |
-          set -eux
+          set -ux
           lb config
+          set +e
           lb build 2>&1 | tee build.log
-
-      - name: Show tail of build log on failure
-        if: failure()
-        working-directory: zenvx-iso
-        run: tail -n 150 build.log || true
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "lb build exit status: $status"
+          if [ "$status" -ne 0 ]; then
+            echo "===================== live-build errors (E:/W:) ====================="
+            grep -nE '^(E|W):' build.log | tail -n 80 || true
+            echo "===================== last 200 lines of build.log =================="
+            tail -n 200 build.log
+            exit "$status"
+          fi
 
       - name: Locate and rename the ISO
         working-directory: zenvx-iso
+        shell: bash
         run: |
           set -eu
           ISO=$(ls -1 *.iso live-image-*.iso 2>/dev/null | head -n1 || true)
           if [ -z "$ISO" ]; then
-            echo "No ISO produced!" >&2
+            echo "No ISO produced! Scanning build.log for errors:"
+            grep -nE '^(E|W):' build.log | tail -n 80 || true
+            echo "--- last 120 lines ---"
+            tail -n 120 build.log || true
             ls -la
             exit 1
           fi
