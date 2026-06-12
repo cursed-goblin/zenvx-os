@@ -1,0 +1,91 @@
+# ZenvX OS package list (installed into the live chroot)
+# --- Base system ---
+linux-image-amd64
+live-boot
+live-config
+live-config-systemd
+systemd-sysv
+dbus
+udev
+sudo
+
+# --- Boot and hardware ---
+grub-efi-amd64
+grub-pc-bin
+grub2-common
+shim-signed
+os-prober
+firmware-linux
+firmware-linux-free
+firmware-linux-nonfree
+firmware-misc-nonfree
+amd64-microcode
+intel-microcode
+
+# --- Display (framebuffer only, no desktop environment) ---
+plymouth
+plymouth-themes
+
+# --- Terminal and shell ---
+bash
+bash-completion
+tmux
+less
+vim-tiny
+nano
+
+# --- Networking ---
+network-manager
+network-manager-gnome
+wpasupplicant
+wireless-tools
+iw
+net-tools
+curl
+wget
+ca-certificates
+
+# --- Python and ZenvX dependencies ---
+python3
+python3-pip
+python3-venv
+python3-dev
+build-essential
+cmake
+git
+ffmpeg
+
+# --- Audio (speech to text) ---
+alsa-utils
+pulseaudio
+pulseaudio-utils
+
+# --- GPU support ---
+libvulkan1
+mesa-vulkan-drivers
+nvidia-detect
+
+# --- Filesystem and storage ---
+parted
+gparted
+dosfstools
+e2fsprogs
+cryptsetup
+
+# --- Utilities ---
+htop
+lsof
+pciutils
+usbutils
+inxi
+unzip
+zip
+rsync
+locales
+console-setup
+keyboard-configuration
+tzdata
+
+# --- Fonts for terminal ---
+fonts-dejavu-core
+fonts-terminus

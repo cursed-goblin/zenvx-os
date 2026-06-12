@@ -1,0 +1,5 @@
+#!/bin/sh
+# auto/clean - cleans live-build artifacts
+set -e
+lb clean noauto "${@}"
+rm -f zenvx-build.log

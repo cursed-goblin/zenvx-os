@@ -1,0 +1,23 @@
+#!/bin/sh
+# auto/config - live-build configuration for ZenvX OS
+# This script is run by `lb config` and sets all build parameters.
+set -e
+
+lb config noauto \
+	--distribution bookworm \
+	--archive-areas "main contrib non-free non-free-firmware" \
+	--binary-images iso-hybrid \
+	--bootloaders "grub-efi,syslinux" \
+	--uefi-secure-boot disable \
+	--iso-application "ZenvX OS" \
+	--iso-volume "ZENVX-OS" \
+	--iso-publisher "ZenvX Project" \
+	--image-name "zenvx-os" \
+	--debian-installer none \
+	--memtest none \
+	--win32-loader false \
+	--firmware-binary true \
+	--firmware-chroot true \
+	--apt-indices false \
+	--apt-recommends true \
+	"${@}"

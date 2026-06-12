@@ -1,0 +1,20 @@
+# live-build artifacts
+zenvx-iso/.build/
+zenvx-iso/cache/
+zenvx-iso/chroot/
+zenvx-iso/binary/
+zenvx-iso/binary.*
+zenvx-iso/chroot.*
+zenvx-iso/.stage/
+zenvx-iso/local/
+*.iso
+*.iso.sha256
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS noise
+.DS_Store

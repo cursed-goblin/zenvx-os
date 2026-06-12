@@ -1,0 +1,4 @@
+#!/bin/sh
+# auto/build - runs the live-build build and tees output to build.log
+set -e
+lb build noauto "${@}" 2>&1 | tee zenvx-build.log

@@ -1,0 +1,51 @@
+# Dockerfile.build - builds the ZenvX OS ISO inside a Debian container.
+# Use this on Fedora (or any non-Debian host) where live-build cannot run natively.
+FROM debian:bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	live-build \
+	debootstrap \
+	squashfs-tools \
+	xorriso \
+	grub-efi-amd64-bin \
+	grub-pc-bin \
+	mtools \
+	dosfstools \
+	syslinux \
+	isolinux \
+	rsync \
+	python3 \
+	git \
+	ca-certificates \
+	&& rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy the ISO build config and the ZenvX agent source
+COPY zenvx-iso/ /build/zenvx-iso/
+COPY zenvx-os/ /build/zenvx-os/
+
+# Embed the ZenvX Python source into the ISO chroot includes
+RUN rsync -a \
+	--exclude '__pycache__' \
+	--exclude '*.pyc' \
+	--exclude '.pytest_cache' \
+	--exclude 'models' \
+	--exclude 'tests' \
+	/build/zenvx-os/ /build/zenvx-iso/config/includes.chroot/opt/zenvx/
+
+WORKDIR /build/zenvx-iso
+
+# Make all live-build control scripts and hooks executable, then configure
+RUN chmod +x auto/config auto/build auto/clean \
+	&& find config/hooks -type f -exec chmod +x {} + \
+	&& find config/includes.chroot/usr/local/bin -type f -exec chmod +x {} + \
+	&& bash auto/config
+
+# Build the ISO and copy it to the mounted /output directory.
+# Requires `docker run --privileged` because live-build mounts filesystems.
+CMD bash auto/build && \
+	mkdir -p /output && \
+	cp -v zenvx-os*.iso /output/ 2>/dev/null || cp -v *.iso /output/
