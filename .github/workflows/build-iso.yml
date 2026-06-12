@@ -1,9 +1,9 @@
 name: Build ZenvX OS ISO
 
 # Builds the live ISO inside a privileged Debian bookworm container using
-# live-build, then publishes the ISO as a workflow artifact and (on tags) a
-# GitHub Release. Running inside Debian avoids the Ubuntu runner's stale
-# live-build defaults (which tried to bootstrap Ubuntu 'precise').
+# live-build, then publishes the ISO as a workflow artifact AND a GitHub
+# Release (tag v1.0.0) so it has a fast, permanent, CDN-backed download link.
+# Running inside Debian avoids the Ubuntu runner's stale live-build defaults.
 #
 # On every run the full build log is committed back to ci-logs/ (as .txt, with
 # git add -f so it survives the *.log gitignore rule) for direct inspection.
@@ -124,11 +124,11 @@ jobs:
             ls -la
             exit 1
           fi
-          VERSION="${GITHUB_REF_NAME:-dev}"
-          OUT="zenvx-os-${VERSION}-amd64.iso"
+          OUT="zenvx-os-v1.0.0-amd64.iso"
           mv "$ISO" "$OUT"
           sha256sum "$OUT" > "$OUT.sha256"
           echo "Built: $OUT"
+          ls -lh "$OUT"
 
       - name: Upload ISO as workflow artifact
         uses: actions/upload-artifact@v4
@@ -149,19 +149,23 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.0.0
+          name: ZenvX OS v1.0.0
           files: |
             zenvx-iso/*.iso
             zenvx-iso/*.iso.sha256
           fail_on_unmatched_files: true
-          generate_release_notes: true
           body: |
             Automated ZenvX OS live ISO build.
 
+            - Privacy-first, local-AI Debian 12 live ISO
             - Hybrid BIOS + UEFI bootable image
             - SHA256 checksum attached
 
-            Flash with:
-            `sudo dd if=zenvx-os-*.iso of=/dev/sdX bs=4M status=progress oflag=sync`
+            Flash to USB (Linux/macOS):
+            `sudo dd if=zenvx-os-v1.0.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync`
+
+            Or use Rufus / balenaEtcher on Windows.
