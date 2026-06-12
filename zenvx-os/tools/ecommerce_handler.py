@@ -2,21 +2,21 @@
 
 VENDOR_CONFIGS = {
     "amazon": {
-        "search_url": "https://www.amazon.in/s?k={query}",
+        "search_prefix": "https://www.amazon.in/s?k=",
         "container": "div[data-component-type='s-search-result']",
         "title": "h2 span",
         "price": "span.a-price-whole",
         "link": "h2 a",
     },
     "flipkart": {
-        "search_url": "https://www.flipkart.com/search?q={query}",
+        "search_prefix": "https://www.flipkart.com/search?q=",
         "container": "div._1AtVbE",
         "title": "div._4rR01T",
         "price": "div._30jeq3",
         "link": "a._1fQZEK",
     },
     "meesho": {
-        "search_url": "https://www.meesho.com/search?q={query}",
+        "search_prefix": "https://www.meesho.com/search?q=",
         "container": "div[class*='ProductList__GridCol']",
         "title": "p[class*='Text']",
         "price": "h5",
@@ -53,7 +53,7 @@ class EcommerceHandler:
         cfg = VENDOR_CONFIGS.get(vendor)
         if not cfg:
             return []
-        url = cfg["search_url"].format(query=query.replace(" ", "+"))
+        url = cfg["search_prefix"] + query.replace(" ", "+")
         self.browser.navigate(url)
         products = []
         try:
