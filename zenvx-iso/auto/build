@@ -1,4 +1,8 @@
 #!/bin/sh
-# auto/build - runs the live-build build and tees output to build.log
+# auto/build - run the real live-build step, propagating its exit code.
+# NOTE: do NOT pipe `lb build` through tee here. A pipe makes this script
+# return tee's exit status (always 0), which hides binary-stage failures and
+# makes the build look successful even when no ISO is produced. The CI logs
+# stdout/stderr itself.
 set -e
-lb build noauto "${@}" 2>&1 | tee zenvx-build.log
+lb build noauto "${@}"

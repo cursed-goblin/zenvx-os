@@ -5,9 +5,8 @@ name: Build ZenvX OS ISO
 # GitHub Release. Running inside Debian avoids the Ubuntu runner's stale
 # live-build defaults (which tried to bootstrap Ubuntu 'precise').
 #
-# On every run the full build log is committed back to ci-logs/ so it can be
-# inspected directly from the repository (path is outside the trigger paths and
-# the commit is marked [skip ci], so this does not loop).
+# On every run the full build log is committed back to ci-logs/ (as .txt, with
+# git add -f so it survives the *.log gitignore rule) for direct inspection.
 
 on:
   push:
@@ -70,13 +69,13 @@ jobs:
           status=${PIPESTATUS[0]}
           set -e
           echo "lb build exit status: $status"
+          echo "$status" > build.status
           if [ "$status" -ne 0 ]; then
             echo "===================== live-build errors (E:/W:) ====================="
             grep -nE '^(E|W):' build.log | tail -n 80 || true
             echo "===================== last 200 lines of build.log =================="
             tail -n 200 build.log
           fi
-          echo "$status" > build.status
 
       - name: Commit build log back to repo (for diagnosis)
         if: always()
@@ -87,10 +86,10 @@ jobs:
           git config user.name 'zenvx-ci'
           git config user.email 'ci@users.noreply.github.com'
           mkdir -p ci-logs
-          cp zenvx-iso/build.log ci-logs/latest-build.log 2>/dev/null || echo 'no build.log produced' > ci-logs/latest-build.log
-          tail -c 250000 zenvx-iso/build.log > ci-logs/latest-build.tail.log 2>/dev/null || true
+          cp zenvx-iso/build.log ci-logs/latest-build.txt 2>/dev/null || echo 'no build.log produced' > ci-logs/latest-build.txt
+          tail -c 250000 zenvx-iso/build.log > ci-logs/latest-build.tail.txt 2>/dev/null || true
           cp zenvx-iso/build.status ci-logs/latest-build.status 2>/dev/null || true
-          git add ci-logs/latest-build.log ci-logs/latest-build.tail.log ci-logs/latest-build.status || true
+          git add -f ci-logs/latest-build.txt ci-logs/latest-build.tail.txt ci-logs/latest-build.status || true
           git commit -m 'ci: build log [skip ci]' || echo 'nothing to commit'
           git push origin HEAD:main || echo 'push failed'
 
