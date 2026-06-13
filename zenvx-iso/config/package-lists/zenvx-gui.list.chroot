@@ -1,0 +1,64 @@
+# ZenvX OS — macOS-style desktop (GUI layer)
+# Installed into the live chroot in addition to zenvx.list.chroot.
+
+# --- X server ---
+xorg
+xserver-xorg
+xinit
+x11-xserver-utils
+
+# --- Display manager + greeter ---
+lightdm
+lightdm-gtk-greeter
+
+# --- Session infrastructure ---
+dbus-user-session
+policykit-1
+
+# --- XFCE desktop ---
+xfce4-session
+xfwm4
+xfdesktop4
+xfce4-panel
+xfce4-settings
+xfconf
+xsettingsd
+thunar
+thunar-archive-plugin
+tumbler
+xfce4-terminal
+xfce4-whiskermenu-plugin
+xfce4-pulseaudio-plugin
+xfce4-power-manager
+xfce4-notifyd
+xfce4-screenshooter
+
+# --- macOS look: dock + compositor ---
+plank
+picom
+
+# --- GTK theme build dependencies ---
+sassc
+gtk2-engines-murrine
+gnome-themes-extra
+dconf-cli
+dconf-gsettings-backend
+libglib2.0-bin
+
+# --- Icons, cursors, fonts ---
+papirus-icon-theme
+adwaita-icon-theme
+fonts-cantarell
+fonts-firacode
+fonts-noto-color-emoji
+fonts-dejavu
+
+# --- Desktop apps for the dock ---
+firefox-esr
+mousepad
+ristretto
+
+# --- Tray + wallpaper tooling ---
+network-manager-gnome
+imagemagick
+feh

@@ -1,0 +1,260 @@
+#!/bin/sh
+# 0300-zenvx-gui.hook.chroot
+# Builds the macOS-style ZenvX desktop: XFCE + WhiteSur + Plank dock + picom.
+# Runs after 0100 (user) and 0200 (source verify) inside the live chroot.
+set -e
+echo "[zenvx 0300] === configuring macOS-style desktop ==="
+
+SKEL=/etc/skel
+HOME_DIR=/home/zenvx
+BG_DIR=/usr/share/backgrounds/zenvx
+XML="$SKEL/.config/xfce4/xfconf/xfce-perchannel-xml"
+
+install -d -m 0755 "$BG_DIR"
+install -d -m 0755 "$XML"
+install -d -m 0755 "$SKEL/.config/xfce4/panel"
+install -d -m 0755 "$SKEL/.config/plank/dock1"
+install -d -m 0755 "$SKEL/.config/autostart"
+install -d -m 0755 "$SKEL/.local/share/plank/dock_items"
+install -d -m 0755 /etc/xdg/autostart
+install -d -m 0755 /usr/share/applications
+install -d -m 0755 /usr/local/bin
+install -d -m 0755 /usr/share/themes /usr/share/icons
+
+echo "[zenvx 0300] generating wallpaper"
+if command -v convert >/dev/null 2>&1; then
+  convert -size 2880x1800 radial-gradient:'#0e5266'-'#05080f' "$BG_DIR/zenvx-wallpaper.png" 2>/dev/null \
+    || convert -size 2880x1800 gradient:'#0e5266'-'#05080f' "$BG_DIR/zenvx-wallpaper.png" 2>/dev/null || true
+fi
+[ -f "$BG_DIR/zenvx-wallpaper.png" ] || echo "[zenvx 0300] WARNING: wallpaper not generated"
+
+WORK=/tmp/zenvx-themes
+rm -rf "$WORK"; mkdir -p "$WORK"
+echo "[zenvx 0300] installing WhiteSur GTK theme"
+if git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git "$WORK/gtk" 2>/dev/null; then
+  ( cd "$WORK/gtk" && ./install.sh -d /usr/share/themes -c Dark -c Light -t default ) || echo "[zenvx 0300] WARN: gtk theme install failed"
+else
+  echo "[zenvx 0300] WARN: cannot fetch WhiteSur GTK theme"
+fi
+echo "[zenvx 0300] installing WhiteSur icons"
+if git clone --depth=1 https://github.com/vinceliuice/WhiteSur-icon-theme.git "$WORK/icons" 2>/dev/null; then
+  ( cd "$WORK/icons" && ./install.sh -d /usr/share/icons ) || echo "[zenvx 0300] WARN: icon install failed"
+else
+  echo "[zenvx 0300] WARN: cannot fetch WhiteSur icons"
+fi
+echo "[zenvx 0300] installing WhiteSur cursors"
+if git clone --depth=1 https://github.com/vinceliuice/WhiteSur-cursors.git "$WORK/cursors" 2>/dev/null; then
+  ( cd "$WORK/cursors" && ./install.sh ) || echo "[zenvx 0300] WARN: cursor install failed"
+fi
+rm -rf "$WORK"
+gtk-update-icon-cache -f /usr/share/icons/WhiteSur 2>/dev/null || true
+gtk-update-icon-cache -f /usr/share/icons/WhiteSur-dark 2>/dev/null || true
+
+echo "[zenvx 0300] writing XFCE configuration"
+cat > "$XML/xsettings.xml" <<'XEOF'
+<?xml version='1.0' encoding='UTF-8'?>
+<channel name='xsettings' version='1.0'>
+  <property name='Net' type='empty'>
+    <property name='ThemeName' type='string' value='WhiteSur-Dark'/>
+    <property name='IconThemeName' type='string' value='WhiteSur-dark'/>
+    <property name='DoubleClickTime' type='int' value='400'/>
+    <property name='EnableEventSounds' type='bool' value='false'/>
+  </property>
+  <property name='Gtk' type='empty'>
+    <property name='FontName' type='string' value='Cantarell 11'/>
+    <property name='MonospaceFontName' type='string' value='Fira Code 11'/>
+    <property name='CursorThemeName' type='string' value='WhiteSur-cursors'/>
+    <property name='DecorationLayout' type='string' value='close,minimize,maximize:menu'/>
+  </property>
+</channel>
+XEOF
+
+cat > "$XML/xfwm4.xml" <<'XEOF'
+<?xml version='1.0' encoding='UTF-8'?>
+<channel name='xfwm4' version='1.0'>
+  <property name='general' type='empty'>
+    <property name='theme' type='string' value='WhiteSur-Dark'/>
+    <property name='title_alignment' type='string' value='center'/>
+    <property name='button_layout' type='string' value='CHM|'/>
+    <property name='button_offset' type='int' value='4'/>
+    <property name='button_spacing' type='int' value='2'/>
+    <property name='use_compositing' type='bool' value='false'/>
+    <property name='workspace_count' type='int' value='1'/>
+    <property name='snap_to_border' type='bool' value='true'/>
+    <property name='snap_to_windows' type='bool' value='true'/>
+  </property>
+</channel>
+XEOF
+
+cat > "$XML/xfce4-desktop.xml" <<'XEOF'
+<?xml version='1.0' encoding='UTF-8'?>
+<channel name='xfce4-desktop' version='1.0'>
+  <property name='backdrop' type='empty'>
+    <property name='screen0' type='empty'>
+      <property name='monitor0' type='empty'>
+        <property name='workspace0' type='empty'>
+          <property name='color-style' type='int' value='0'/>
+          <property name='image-style' type='int' value='5'/>
+          <property name='last-image' type='string' value='/usr/share/backgrounds/zenvx/zenvx-wallpaper.png'/>
+        </property>
+      </property>
+    </property>
+  </property>
+</channel>
+XEOF
+
+cat > "$XML/xfce4-panel.xml" <<'XEOF'
+<?xml version='1.0' encoding='UTF-8'?>
+<channel name='xfce4-panel' version='1.0'>
+  <property name='configver' type='int' value='2'/>
+  <property name='panels' type='array'>
+    <value type='int' value='1'/>
+    <property name='dark-mode' type='bool' value='true'/>
+    <property name='panel-1' type='empty'>
+      <property name='position' type='string' value='p=6;x=0;y=0'/>
+      <property name='length' type='uint' value='100'/>
+      <property name='position-locked' type='bool' value='true'/>
+      <property name='size' type='uint' value='28'/>
+      <property name='enter-opacity' type='uint' value='90'/>
+      <property name='leave-opacity' type='uint' value='90'/>
+      <property name='background-style' type='uint' value='0'/>
+      <property name='plugin-ids' type='array'>
+        <value type='int' value='1'/>
+        <value type='int' value='2'/>
+        <value type='int' value='3'/>
+        <value type='int' value='4'/>
+        <value type='int' value='5'/>
+        <value type='int' value='6'/>
+        <value type='int' value='7'/>
+      </property>
+    </property>
+  </property>
+  <property name='plugins' type='empty'>
+    <property name='plugin-1' type='string' value='whiskermenu'/>
+    <property name='plugin-2' type='string' value='separator'>
+      <property name='expand' type='bool' value='true'/>
+      <property name='style' type='uint' value='0'/>
+    </property>
+    <property name='plugin-3' type='string' value='pulseaudio'/>
+    <property name='plugin-4' type='string' value='systray'/>
+    <property name='plugin-5' type='string' value='power-manager-plugin'/>
+    <property name='plugin-6' type='string' value='clock'>
+      <property name='mode' type='uint' value='2'/>
+      <property name='digital-time-format' type='string' value='%a %e %b  %l:%M %p'/>
+    </property>
+    <property name='plugin-7' type='string' value='actions'>
+      <property name='appearance' type='uint' value='0'/>
+      <property name='items' type='array'>
+        <value type='string' value='+lock-screen'/>
+        <value type='string' value='+logout'/>
+        <value type='string' value='+separator'/>
+        <value type='string' value='+restart'/>
+        <value type='string' value='+shutdown'/>
+      </property>
+    </property>
+  </property>
+</channel>
+XEOF
+
+cat > "$SKEL/.config/xfce4/panel/whiskermenu-1.rc" <<'XEOF'
+button-icon=start-here
+button-title=ZenvX
+show-button-title=false
+show-button-icon=true
+launcher-show-name=true
+launcher-show-description=true
+category-show-name=true
+XEOF
+
+echo "[zenvx 0300] configuring Plank dock"
+cat > "$SKEL/.config/plank/dock1/settings" <<'XEOF'
+[PlankDockPreferences]
+CurrentWorkspaceOnly=false
+IconSize=48
+HideMode=0
+UnhideDelay=0
+HideDelay=0
+Monitor=
+DockItems=zenvx-agent.dockitem;;xfce4-terminal.dockitem;;firefox-esr.dockitem;;thunar.dockitem;;xfce4-settings-manager.dockitem
+Position=3
+Offset=0
+Theme=Transparent
+Alignment=center
+ItemsAlignment=center
+LockItems=false
+PressureReveal=false
+PinnedOnly=false
+AutoPinning=true
+ShowDockItem=false
+ZoomEnabled=true
+ZoomPercent=160
+XEOF
+
+DI="$SKEL/.local/share/plank/dock_items"
+for pair in "zenvx-agent.dockitem zenvx-agent.desktop" "xfce4-terminal.dockitem xfce4-terminal.desktop" "firefox-esr.dockitem firefox-esr.desktop" "thunar.dockitem thunar.desktop" "xfce4-settings-manager.dockitem xfce4-settings-manager.desktop"; do
+  set -- $pair
+  printf '[PlankDockItemPreferences]\nLauncher=file:///usr/share/applications/%s\n' "$2" > "$DI/$1"
+done
+
+echo "[zenvx 0300] writing picom config"
+cat > "$SKEL/.config/picom.conf" <<'XEOF'
+backend = "glx";
+vsync = true;
+corner-radius = 12;
+round-borders = 1;
+shadow = true;
+shadow-radius = 18;
+shadow-opacity = 0.45;
+shadow-offset-x = -18;
+shadow-offset-y = -18;
+fading = true;
+fade-in-step = 0.04;
+fade-out-step = 0.04;
+blur-method = "dual_kawase";
+blur-strength = 6;
+blur-background = true;
+detect-rounded-corners = true;
+detect-client-opacity = true;
+use-damage = true;
+rounded-corners-exclude = [ "window_type = 'dock'", "window_type = 'desktop'" ];
+shadow-exclude = [ "window_type = 'dock'", "window_type = 'desktop'" ];
+blur-background-exclude = [ "window_type = 'dock'", "window_type = 'desktop'" ];
+XEOF
+
+echo "[zenvx 0300] writing autostart entries"
+cat > /etc/xdg/autostart/zenvx-picom.desktop <<'XEOF'
+[Desktop Entry]
+Type=Application
+Name=ZenvX Compositor
+Exec=picom
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true
+XEOF
+
+cat > /etc/xdg/autostart/zenvx-plank.desktop <<'XEOF'
+[Desktop Entry]
+Type=Application
+Name=ZenvX Dock
+Exec=plank
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true
+XEOF
+
+cat > /etc/xdg/autostart/zenvx-desktop-setup.desktop <<'XEOF'
+[Desktop Entry]
+Type=Application
+Name=ZenvX Desktop Setup
+Exec=/usr/local/bin/zenvx-desktop-setup
+OnlyShowIn=XFCE;
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+XEOF
+
+echo "[zenvx 0300] writing runtime desktop-setup script"
+cat > /usr/local/bin/zenvx-desktop-setup <<'XEOF'
+#!/bin/sh
+# Applies the ZenvX desktop theme + wallpaper at login, picking installed variants.
+setp() { xfconf-query -c "$1" -p "$2" -s "$3" 2>/dev/null || xfconf-query -c "$1" -p "$2" -n -t "$4" -s "$3" 2>/dev/null; }
+GTK=""; for t in WhiteSur-Dark WhiteSur-dark Adwaita-dark; do [ -d "/usr/share/themes/$t" ] && GTK="$t" && break; done
+ICON=""; for i in WhiteSur-dark WhiteSur Papirus-Dark Adwaita; do [ -d "/usr/share/icons/$i" ] && ICON="$i" && break; done
+CUR=""; for c in WhiteSur-cursors Adwaita; do [ -d "/usr/share/icons/$c/c
