@@ -1,0 +1,82 @@
+#!/bin/sh
+# 0310-zenvx-gui-finalize.hook.chroot
+# Finalizes the macOS-style desktop: runtime theme/wallpaper script, the ZenvX
+# Agent launcher, propagation of skel config to the live user, LightDM
+# autologin, and booting into the graphical session.
+set -e
+echo "[zenvx 0310] finalizing desktop"
+
+SKEL=/etc/skel
+HOME_DIR=/home/zenvx
+install -d -m 0755 /usr/local/bin /usr/share/applications /etc/lightdm/lightdm.conf.d
+
+echo "[zenvx 0310] writing runtime desktop-setup script"
+cat > /usr/local/bin/zenvx-desktop-setup <<'XEOF'
+#!/bin/sh
+# Applies the ZenvX desktop theme + wallpaper at login, picking installed variants.
+setp() { xfconf-query -c "$1" -p "$2" -s "$3" 2>/dev/null || xfconf-query -c "$1" -p "$2" -n -t "$4" -s "$3" 2>/dev/null; }
+GTK=""; for t in WhiteSur-Dark WhiteSur-dark Adwaita-dark; do [ -d "/usr/share/themes/$t" ] && GTK="$t" && break; done
+ICON=""; for i in WhiteSur-dark WhiteSur Papirus-Dark Adwaita; do [ -d "/usr/share/icons/$i" ] && ICON="$i" && break; done
+CUR=""; for c in WhiteSur-cursors Adwaita; do [ -d "/usr/share/icons/$c/cursors" ] && CUR="$c" && break; done
+[ -n "$GTK" ] && setp xsettings /Net/ThemeName "$GTK" string
+[ -n "$GTK" ] && setp xfwm4 /general/theme "$GTK" string
+[ -n "$ICON" ] && setp xsettings /Net/IconThemeName "$ICON" string
+[ -n "$CUR" ] && setp xsettings /Gtk/CursorThemeName "$CUR" string
+WP=/usr/share/backgrounds/zenvx/zenvx-wallpaper.png
+if [ -f "$WP" ]; then
+  props=$(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep 'last-image$')
+  if [ -n "$props" ]; then
+    for p in $props; do xfconf-query -c xfce4-desktop -p "$p" -s "$WP" 2>/dev/null; done
+  else
+    setp xfce4-desktop /backdrop/screen0/monitor0/workspace0/last-image "$WP" string
+    setp xfce4-desktop /backdrop/screen0/monitor0/workspace0/image-style 5 int
+  fi
+fi
+exit 0
+XEOF
+chmod 0755 /usr/local/bin/zenvx-desktop-setup
+
+echo "[zenvx 0310] writing ZenvX Agent launcher"
+cat > /usr/share/applications/zenvx-agent.desktop <<'XEOF'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=ZenvX Agent
+GenericName=Local AI Assistant
+Comment=Talk to your private, on-device AI agent
+Exec=xfce4-terminal --title=ZenvX --maximize --command=zenvx
+Icon=utilities-terminal
+Terminal=false
+Categories=Utility;System;
+Keywords=AI;Assistant;ZenvX;
+XEOF
+
+echo "[zenvx 0310] propagating config to zenvx home"
+if id zenvx >/dev/null 2>&1; then
+  cp -a "$SKEL/.config" "$HOME_DIR/" 2>/dev/null || true
+  cp -a "$SKEL/.local" "$HOME_DIR/" 2>/dev/null || true
+  chown -R zenvx:zenvx "$HOME_DIR" 2>/dev/null || true
+fi
+
+echo "[zenvx 0310] configuring LightDM autologin + graphical target"
+cat > /etc/lightdm/lightdm.conf.d/50-zenvx.conf <<'XEOF'
+[Seat:*]
+autologin-user=zenvx
+autologin-user-timeout=0
+user-session=xfce
+greeter-session=lightdm-gtk-greeter
+XEOF
+cat > /etc/lightdm/lightdm-gtk-greeter.conf <<'XEOF'
+[greeter]
+theme-name=WhiteSur-Dark
+icon-theme-name=WhiteSur-dark
+background=/usr/share/backgrounds/zenvx/zenvx-wallpaper.png
+font-name=Cantarell 11
+XEOF
+getent group autologin >/dev/null 2>&1 || groupadd autologin
+usermod -aG autologin zenvx || true
+systemctl enable lightdm.service 2>/dev/null || true
+systemctl set-default graphical.target 2>/dev/null || true
+echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager 2>/dev/null || true
+
+echo "[zenvx 0310] desktop finalize complete"
