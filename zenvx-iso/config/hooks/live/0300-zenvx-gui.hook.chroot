@@ -2,11 +2,11 @@
 # 0300-zenvx-gui.hook.chroot
 # Builds the macOS-style ZenvX desktop: XFCE + WhiteSur + Plank dock + picom.
 # Runs after 0100 (user) and 0200 (source verify) inside the live chroot.
+# Finalization (login script, autologin, graphical target) is in 0310.
 set -e
 echo "[zenvx 0300] === configuring macOS-style desktop ==="
 
 SKEL=/etc/skel
-HOME_DIR=/home/zenvx
 BG_DIR=/usr/share/backgrounds/zenvx
 XML="$SKEL/.config/xfce4/xfconf/xfce-perchannel-xml"
 
@@ -115,8 +115,6 @@ cat > "$XML/xfce4-panel.xml" <<'XEOF'
       <property name='length' type='uint' value='100'/>
       <property name='position-locked' type='bool' value='true'/>
       <property name='size' type='uint' value='28'/>
-      <property name='enter-opacity' type='uint' value='90'/>
-      <property name='leave-opacity' type='uint' value='90'/>
       <property name='background-style' type='uint' value='0'/>
       <property name='plugin-ids' type='array'>
         <value type='int' value='1'/>
@@ -250,11 +248,4 @@ NoDisplay=true
 X-GNOME-Autostart-enabled=true
 XEOF
 
-echo "[zenvx 0300] writing runtime desktop-setup script"
-cat > /usr/local/bin/zenvx-desktop-setup <<'XEOF'
-#!/bin/sh
-# Applies the ZenvX desktop theme + wallpaper at login, picking installed variants.
-setp() { xfconf-query -c "$1" -p "$2" -s "$3" 2>/dev/null || xfconf-query -c "$1" -p "$2" -n -t "$4" -s "$3" 2>/dev/null; }
-GTK=""; for t in WhiteSur-Dark WhiteSur-dark Adwaita-dark; do [ -d "/usr/share/themes/$t" ] && GTK="$t" && break; done
-ICON=""; for i in WhiteSur-dark WhiteSur Papirus-Dark Adwaita; do [ -d "/usr/share/icons/$i" ] && ICON="$i" && break; done
-CUR=""; for c in WhiteSur-cursors Adwaita; do [ -d "/usr/share/icons/$c/c
+echo "[zenvx 0300] base desktop configuration done"
